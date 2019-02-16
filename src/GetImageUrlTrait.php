@@ -1,6 +1,11 @@
 <?php
 namespace maxdancepro\image;
 
+/**
+ * Trait GetImageUrlTrait
+ *
+ * @package maxdancepro\image
+ */
 trait GetImageUrlTrait
 {
     /**
