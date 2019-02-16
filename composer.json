@@ -1,0 +1,42 @@
+{
+    "name": "maxdancepro/yii2-uploadable-cropable-image",
+    "description": "Yii2 extension for upload and crop images Bootstrap 4",
+    "type": "yii2-extension",
+    "keywords": [
+        "yii2",
+        "extension",
+        "jcrop",
+        "image",
+        "image upload",
+        "image crop"
+    ],
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Maxim Kolokolnikov",
+            "email": "maxdancepro@gmail.com",
+            "homepage": "http://maximkolokolnikov.ru"
+        },
+        {
+            "name": "Maksim Vorozhtsov",
+            "email": "myks1992@mail.ru"
+        }
+    ],
+    "require": {
+        "yiisoft/yii2": "2.0.*",
+        "yiisoft/yii2-imagine": "2.*",
+        "yiisoft/yii2-bootstrap4": "^2.*",
+        "bower-asset/Jcrop": "0.9.*"
+    },
+    "autoload": {
+        "psr-4": {
+            "maxdancepro\\image\\": "src"
+        }
+    },
+    "extra": {
+        "asset-installer-paths": {
+            "npm-asset-library": "vendor/npm",
+            "bower-asset-library": "vendor/bower"
+        }
+    }
+}
