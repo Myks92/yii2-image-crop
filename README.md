@@ -2,12 +2,6 @@ Yii2 uploadable and cropable image
 ==================================
 Yii2 расширение для загрузки и кропа изображений
 
-[![Latest Version](https://img.shields.io/github/release/maxdancepro/yii2-image-crop.svg?style=flat-square)](https://github.com/maxdancepro/yii2-image-crop/releases)
-[![Software License](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://github.com/maxdancepro/yii2-image-crop/blob/master/LICENSE.md)
-[![Quality Score](https://img.shields.io/scrutinizer/g/maxdancepro/yii2-image-crop.svg?style=flat-square)](https://scrutinizer-ci.com/g/maxdancepro/yii2-image-crop)
-[![Code Climate](https://img.shields.io/codeclimate/github/maxdancepro/yii2-image-crop.svg?style=flat-square)](https://codeclimate.com/github/maxdancepro/yii2-image-crop)
-[![Total Downloads](https://img.shields.io/packagist/dt/maxdancepro/yii2-image-crop.svg?style=flat-square)](https://packagist.org/packages/maxdancepro/yii2-image-crop)
-
 Установка
 ------------
 
