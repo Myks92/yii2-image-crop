@@ -2,7 +2,7 @@
 
 Contributions are **welcome** and will be fully **credited**.
 
-We accept contributions via Pull Requests on [Github](https://github.com/maxdancepro/yii2-uploadable-cropable-image).
+We accept contributions via Pull Requests on [Github](https://github.com/maxdancepro/yii2-image-crop).
 
 
 ## Pull Requests

@@ -1,6 +1,6 @@
 # Changelog
 
-All Notable changes to `yii2-uploadable-cropable-image` will be documented in this file
+All Notable changes to `yii2-image-crop` will be documented in this file
 
 ## 2.2.5
 - Yii Bootstrap 4 to bower-asset dependency

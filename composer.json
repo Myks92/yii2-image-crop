@@ -1,5 +1,5 @@
 {
-    "name": "maxdancepro/yii2-uploadable-cropable-image",
+    "name": "maxdancepro/yii2-image-crop",
     "description": "Yii2 extension for upload and crop images Bootstrap 4",
     "type": "yii2-extension",
     "keywords": [
