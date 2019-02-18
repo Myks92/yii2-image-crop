@@ -21,7 +21,7 @@ use yii\helpers\Json;
     <?php Modal::begin([
         'id' => $selector . '-modal',
         'closeButton' => ['onclick' => 'destroyJcrop("' . $selector . '-image");', 'id' => $selector . '-image-close'],
-        'header' => '<h2>' . Yii::t('maxdancepro/image', 'Crop image') . '</h2>',
+        'title' => '<h2>' . Yii::t('maxdancepro/image', 'Crop image') . '</h2>',
         'footer' => Button::widget([
             'label' => 'ОК',
             'options' => [
