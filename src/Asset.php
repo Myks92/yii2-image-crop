@@ -22,7 +22,6 @@ class Asset extends AssetBundle
      * @inheritdoc
      */
     public $depends = [
-        'yii\bootstrap\BootstrapAsset',
         'yii\web\JqueryAsset',
     ];
 }
