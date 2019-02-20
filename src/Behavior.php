@@ -345,7 +345,7 @@ class Behavior extends \yii\base\Behavior
         }
 
         $object = isset($object) ? $object : $this->owner;
-        return '/images/' . $this->getShortClassName($object) . '/';
+        return Yii::$app->request->baseUrl.'/images/' . $this->getShortClassName($object) . '/';
     }
 
     /**
