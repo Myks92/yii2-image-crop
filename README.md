@@ -77,3 +77,6 @@ echo Html::img($model->getImageUrl('logo', 'mini')); //получим url мин
 use \maxdancepro\image\GetImageUrlTrait
 ```
 и использовать метод getImageUrl() и во frontend модели.
+
+
+
