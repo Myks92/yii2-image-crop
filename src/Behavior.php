@@ -277,19 +277,16 @@ class Behavior extends \yii\base\Behavior
         $prefix = $this->getUrlPrefix($attr, $tmb, $object);
 
         $object = isset($object) ? $object : $this->owner;
+        $image = $tmb ? $tmb. '_' . $object->{$attr} : $object->{$attr};
 
-        if ($tmb) {
-            $image = $prefix . $tmb . '_' . $object->{$attr};
-        } else {
-            $image = $prefix . $object->{$attr};
-        }
-        
-        //Если файл не существует
-        if(!file_exists($image)) {
+        $file = $this->getSavePath($attr).$image;
+
+        //Если файл существует
+        if(!is_file($file)) {
         	return null;
         } 
         
-        return $image;
+        return $prefix.$image;
     }
 
     /**
