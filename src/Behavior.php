@@ -279,10 +279,14 @@ class Behavior extends \yii\base\Behavior
         $object = isset($object) ? $object : $this->owner;
 
         if ($tmb) {
-            return $prefix . $tmb . '_' . $object->{$attr};
+            $file = $prefix . $tmb . '_' . $object->{$attr};
         } else {
-            return $prefix . $object->{$attr};
+            $file = $prefix . $object->{$attr};
         }
+        //Если файл существует
+        $result = file_exists($file) ? $file : null
+        
+        return = $result;
     }
 
     /**
