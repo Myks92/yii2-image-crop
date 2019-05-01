@@ -284,7 +284,7 @@ class Behavior extends \yii\base\Behavior
         $this->checkAttrExists($attr);
         $prefix = $this->getUrlPrefix($attr, $tmb, $object);
         $object = isset($object) ? $object : $this->owner;
-        $image = $tmb ? $tmb. '_' . $object->{$attr} : $object->{$attr};
+        $image = $tmb ? $tmb. DIRECTORY_SEPARATOR . $object->{$attr} : $object->{$attr};
         $file = $this->getSavePath($attr).$image;
         //Если файл существует
         if(!is_file($file)) {
