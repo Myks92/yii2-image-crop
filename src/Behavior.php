@@ -5,6 +5,7 @@ use Imagine\Image\Box;
 use Imagine\Image\Point;
 use yii\base\InvalidCallException;
 use yii\base\InvalidParamException;
+use yii\base\Model;
 use yii\db\ActiveRecord;
 use yii\imagine\Image;
 use yii\web\UploadedFile;
@@ -87,6 +88,8 @@ class Behavior extends \yii\base\Behavior
             ActiveRecord::EVENT_BEFORE_UPDATE => 'beforeSave',
             ActiveRecord::EVENT_BEFORE_DELETE => 'beforeDelete',
             ActiveRecord::EVENT_BEFORE_VALIDATE => 'beforeValidate',
+            Model::EVENT_BEFORE_VALIDATE => 'beforeValidate',
+            Model::EVENT_BEFORE_VALIDATE => 'beforeSave',
         ];
     }
 
@@ -137,8 +140,13 @@ class Behavior extends \yii\base\Behavior
                     $thumbnails = $this->attributes[$attr]['thumbnails'];
                     foreach ($thumbnails as $name => $options) {
                         $this->ensureAttribute($name, $options);
-                        $tmbFileName = $name . '_' . $fileName;
+                        $tmbFileName = $name . DIRECTORY_SEPARATOR . $fileName;
                         $image = $this->processImage($this->getSavePath($attr) . $fileName, $options);
+
+                        $dir = $this->getSavePath($attr).$name;
+                        if (!is_dir($dir)) {
+                            FileHelper::createDirectory($dir);
+                        }
                         $image->save($this->getSavePath($attr) . $tmbFileName);
                     }
                 }
@@ -275,19 +283,17 @@ class Behavior extends \yii\base\Behavior
     {
         $this->checkAttrExists($attr);
         $prefix = $this->getUrlPrefix($attr, $tmb, $object);
-
         $object = isset($object) ? $object : $this->owner;
         $image = $tmb ? $tmb. '_' . $object->{$attr} : $object->{$attr};
-
         $file = $this->getSavePath($attr).$image;
-
         //Если файл существует
         if(!is_file($file)) {
-        	return null;
-        } 
-        
+            return null;
+        }
+
         return $prefix.$image;
     }
+
 
     /**
      * @param string $attr name of attribute
