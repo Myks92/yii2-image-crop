@@ -25,7 +25,7 @@ use Yii;
  *              'class' => \maxdancepro\image\Behavior::className(),
  *              'savePathAlias' => '@web/images/',
  *              'urlPrefix' => '/images/',
- *              'deleteFileName' => 'avatar.jpg',
+ *              'fileName' => 'avatar.jpg',
  *              'deleteFileName' => 'avatar.jpg',
  *              'crop' => true,
  *              'attributes' => [
@@ -148,16 +148,16 @@ class Behavior extends \yii\base\Behavior
 
                 if ($this->issetThumbnails($attr)) {
                     $thumbnails = $this->attributes[$attr]['thumbnails'];
-                    foreach ($thumbnails as $name => $options) {
-                        $this->ensureAttribute($name, $options);
-                        $tmbFileName = $name . DIRECTORY_SEPARATOR . $fileName;
+                    foreach ($thumbnails as $tmb => $options) {
+                        $this->ensureAttribute($tmb, $options);
+                        $tmbFileName = $tmb . DIRECTORY_SEPARATOR . $fileName;
                         $image = $this->processImage($this->getSavePath($attr) . $fileName, $options);
 
-                        $dir = $this->getSavePath($attr).$name;
+                        $dir = $this->getSavePath($attr, $tmb).$tmb;
                         if (!is_dir($dir)) {
                             FileHelper::createDirectory($dir);
                         }
-                        $image->save($this->getSavePath($attr) . $tmbFileName);
+                        $image->save($this->getSavePath($attr, $tmb) . $tmbFileName);
                     }
                 }
             } elseif (isset($model->oldAttributes[$attr])) {
