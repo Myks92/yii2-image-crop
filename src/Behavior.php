@@ -1,16 +1,17 @@
 <?php
+
 namespace maxdancepro\image;
 
 use Imagine\Image\Box;
 use Imagine\Image\Point;
+use Yii;
 use yii\base\InvalidCallException;
 use yii\base\InvalidParamException;
 use yii\base\Model;
 use yii\db\ActiveRecord;
+use yii\helpers\FileHelper;
 use yii\imagine\Image;
 use yii\web\UploadedFile;
-use yii\helpers\FileHelper;
-use Yii;
 
 /**
  * Class model behavior for uploadable and cropable image
@@ -24,7 +25,8 @@ use Yii;
  *         [
  *              'class' => \maxdancepro\image\Behavior::className(),
  *              'savePathAlias' => '@web/images/',
- *              'urlPrefix' => '/images/',
+ *              'urlPrefix' => 'images/',
+ *              'thumbUrl' => 'images/thumb',
  *              'fileName' => 'avatar.jpg',
  *              'deleteFileName' => 'avatar.jpg',
  *              'crop' => true,
@@ -38,6 +40,7 @@ use Yii;
  *                  'logo' => [
  *                      'crop' => false,
  *                      'thumbnails' => [
+ *                          'savePathAlias' => '@web/images/avatars/logo', //Путь сохранения миниатюр
  *                          'mini' => [
  *                              'width' => 50,
  *                          ],
@@ -72,6 +75,10 @@ class Behavior extends \yii\base\Behavior
      */
     public $savePathAlias;
     /**
+     * @var string. Путь сохранения миниатюр. По умолчанию $savePathAlias
+     */
+    public $thumbPath;
+    /**
      * @var bool enable/disable crop.
      */
     public $crop = true;
@@ -79,6 +86,10 @@ class Behavior extends \yii\base\Behavior
      * @var string part of url for image without hostname. Default '/images/%className%/'
      */
     public $urlPrefix;
+    /**
+     * @var string. string part of url for thumbnail simage without hostname. Default '/images/%className%/'
+     */
+    public $thumbUrl;
     /**
      * @var string, название файла. По умолчанию уникальный генератор числа @see https://www.php.net/manual/ru/function.uniqid.php
      */
@@ -119,51 +130,164 @@ class Behavior extends \yii\base\Behavior
     }
 
     /**
+     * @param $attr
+     * @param $options
+     */
+    public static function ensureAttribute(&$attr, &$options)
+    {
+        if (!is_array($options)) {
+            $attr = $options;
+            $options = [];
+        }
+    }
+
+    /**
      * function for EVENT_BEFORE_INSERT and EVENT_BEFORE_UPDATE
      */
     public function beforeSave()
     {
         /* @var $model ActiveRecord */
         $model = $this->owner;
+
         foreach ($this->attributes as $attr => $options) {
+
             $this->ensureAttribute($attr, $options);
+
             if ($file = UploadedFile::getInstance($model, $attr)) {
-                $this->createDirIfNotExists($attr);
+
+                $this->createDirByAttr($attr);
+
                 if (!$model->isNewRecord) {
                     $this->deleteFiles($attr);
                 }
+
                 $fileName = $this->getFileName($file);
+
                 if ($this->needCrop($attr)) {
                     $coords = $this->getCoords($attr);
                     if ($coords === false) {
                         throw new InvalidCallException();
                     }
                     $image = $this->crop($file, $coords, $options);
-                    $image->save($this->getSavePath($attr) . $fileName);
                 } else {
                     $image = $this->processImage($file->tempName, $options);
-                    $image->save($this->getSavePath($attr) . $fileName);
                 }
+
+                $image->save($this->getSavePath($attr) . $fileName);
                 $model->{$attr} = $fileName;
 
                 if ($this->issetThumbnails($attr)) {
+
+                    $thumbPath =  $this->getThumbPath();
                     $thumbnails = $this->attributes[$attr]['thumbnails'];
+
+                    $this->createDirectory($thumbPath);
+
                     foreach ($thumbnails as $tmb => $options) {
                         $this->ensureAttribute($tmb, $options);
-                        $tmbFileName = $tmb . DIRECTORY_SEPARATOR . $fileName;
-                        $image = $this->processImage($this->getSavePath($attr) . $fileName, $options);
-
-                        $dir = $this->getSavePath($attr, $tmb).$tmb;
-                        if (!is_dir($dir)) {
-                            FileHelper::createDirectory($dir);
-                        }
-                        $image->save($this->getSavePath($attr, $tmb) . $tmbFileName);
+                        $tmbFileName  = $tmb . '_' . $fileName;
+                        $image = $this->processImage($file->tempName, $options);
+                        $image->save($thumbPath . $tmbFileName);
                     }
+
                 }
+
             } elseif (isset($model->oldAttributes[$attr])) {
                 $model->{$attr} = $model->oldAttributes[$attr];
             }
         }
+    }
+
+    /**
+     * @param string $attr name of attribute
+     */
+    private function createDirByAttr($attr)
+    {
+        $dir = $this->getSavePath($attr);
+        $this->createDirectory($dir);
+    }
+
+    /**
+     * @param string $attr name of attribute
+     * @return string save path
+     */
+    private function getSavePath($attr = null)
+    {
+        if (isset($this->attributes[$attr]['savePathAlias'])) {
+            return rtrim(Yii::getAlias($this->attributes[$attr]['savePathAlias']), '\/') . DIRECTORY_SEPARATOR;
+        }
+        if (isset($this->savePathAlias)) {
+            return rtrim(Yii::getAlias($this->savePathAlias), '\/') . DIRECTORY_SEPARATOR;
+        }
+
+        if (isset(Yii::$aliases['@frontend'])) {
+            return Yii::getAlias('@frontend/web/images/' . $this->getShortClassName($this->owner)) . DIRECTORY_SEPARATOR;
+        }
+
+        return Yii::getAlias('@app/web/images/' . $this->getShortClassName($this->owner)) . DIRECTORY_SEPARATOR;
+    }
+
+    /**
+     * @param ActiveRecord $object
+     * @return string
+     */
+    private function getShortClassName($object)
+    {
+        $object = new \ReflectionClass($object);
+        return mb_strtolower($object->getShortName());
+    }
+
+    /**
+     * Delete images
+     * @param string $attr name of attribute
+     */
+    private function deleteFiles($attr)
+    {
+        $base = $this->getSavePath($attr);
+        /* @var $model ActiveRecord */
+        $model = $this->owner;
+        if ($model->isNewRecord) {
+            $value = $model->{$attr};
+        } else {
+            if (isset($this->deleteFileName)) {
+                $value = $this->deleteFileName;
+            } else {
+                $value = $model->oldAttributes[$attr];
+            }
+        }
+        $file = $base . $value;
+        $this->removeFile($file);
+
+        if ($this->issetThumbnails($attr)) {
+            foreach ($this->attributes[$attr]['thumbnails'] as $name => $options) {
+                $this->ensureAttribute($name, $options);
+                $file = $base . $name . '_' . $value;
+                $this->removeFile($file);
+            }
+        }
+    }
+
+    /**
+     * @param string $attr name of attribute
+     * @return bool isset thumbnails or not
+     */
+    private function issetThumbnails($attr)
+    {
+        return isset($this->attributes[$attr]['thumbnails']) && is_array($this->attributes[$attr]['thumbnails']);
+    }
+
+    /**
+     * Получение имени файла. По умолчанию уникальный ID
+     * @param $file
+     * @return string
+     */
+    private function getFileName($file)
+    {
+        if (isset($this->fileName)) {
+            return $this->fileName . '.' . $file->extension;
+        }
+
+        return uniqid() . '.' . $file->extension;
     }
 
     /**
@@ -202,185 +326,6 @@ class Behavior extends \yii\base\Behavior
     }
 
     /**
-     * function for EVENT_BEFORE_DELETE
-     */
-    public function beforeDelete()
-    {
-        foreach ($this->attributes as $attr => $options) {
-            $this->ensureAttribute($attr, $options);
-            $this->deleteFiles($attr);
-        }
-    }
-
-    /**
-     * @param string $attr name of attribute
-     * @param bool|string $tmb false or name of thumbnail
-     * @param ActiveRecord $object that keep attrribute. Default $this->owner
-     * @return string url to image
-     */
-    public function getImageUrl($attr, $tmb = false, $object = null)
-    {
-        $this->checkAttrExists($attr);
-        $prefix = $this->getUrlPrefix($attr, $tmb, $object);
-        $object = isset($object) ? $object : $this->owner;
-        $image = $tmb ? $tmb. DIRECTORY_SEPARATOR . $object->{$attr} : $object->{$attr};
-        $file = $this->getSavePath($attr).$image;
-        //Если файл существует
-        if(!is_file($file)) {
-            return null;
-        }
-
-        return $prefix.$image;
-    }
-    /**
-     * @param $attr
-     * @param $options
-     */
-    public static function ensureAttribute(&$attr, &$options)
-    {
-        if (!is_array($options)) {
-            $attr = $options;
-            $options = [];
-        }
-    }
-
-    /**
-     * @param string $attr name of attribute
-     */
-    private function createDirIfNotExists($attr)
-    {
-        $dir = $this->getSavePath($attr);
-        if (!is_dir($dir)) {
-            FileHelper::createDirectory($dir);
-        }
-    }
-
-    /**
-     * @param string $attr name of attribute
-     * @param bool|string $tmb name of thumbnail
-     * @return string save path
-     */
-    private function getSavePath($attr, $tmb = false)
-    {
-        if ($tmb !== false) {
-            if (isset($this->attributes[$attr]['thumbnails'][$tmb]['savePathAlias'])) {
-                return rtrim(Yii::getAlias($this->attributes[$attr]['thumbnails'][$tmb]['savePathAlias']), '\/') . DIRECTORY_SEPARATOR;
-            }
-        }
-
-        if (isset($this->attributes[$attr]['savePathAlias'])) {
-            return rtrim(Yii::getAlias($this->attributes[$attr]['savePathAlias']), '\/') . DIRECTORY_SEPARATOR;
-        }
-        if (isset($this->savePathAlias)) {
-            return rtrim(Yii::getAlias($this->savePathAlias), '\/') . DIRECTORY_SEPARATOR;
-        }
-
-        if (isset(Yii::$aliases['@frontend'])) {
-            return Yii::getAlias('@frontend/web/images/' . $this->getShortClassName($this->owner)) . DIRECTORY_SEPARATOR;
-        }
-
-        return Yii::getAlias('@app/web/images/' . $this->getShortClassName($this->owner)) . DIRECTORY_SEPARATOR;
-    }
-
-    /**
-     * @param string $attr name of attribute
-     * @param bool|string $tmb name of thumbnail
-     * @param ActiveRecord $object for default prefix
-     * @return string url prefix
-     */
-    private function getUrlPrefix($attr, $tmb = false, $object = null)
-    {
-        if ($tmb !== false) {
-            if (isset($this->attributes[$attr]['thumbnails'][$tmb]['urlPrefix'])) {
-                return '/' . trim($this->attributes[$attr]['thumbnails'][$tmb]['urlPrefix'], '/') . '/';
-            }
-        }
-
-        if (isset($this->attributes[$attr]['urlPrefix'])) {
-            return '/' . trim($this->attributes[$attr]['urlPrefix'], '/') . '/';
-        }
-        if (isset($this->urlPrefix)) {
-            return '/' . trim($this->urlPrefix, '/') . '/';
-        }
-
-        $object = isset($object) ? $object : $this->owner;
-        return Yii::$app->request->baseUrl.'/images/' . $this->getShortClassName($object) . '/';
-    }
-
-    /**
-     * Delete images
-     * @param string $attr name of attribute
-     */
-    private function deleteFiles($attr)
-    {
-        $base = $this->getSavePath($attr);
-        /* @var $model ActiveRecord */
-        $model = $this->owner;
-        if ($model->isNewRecord) {
-            $value = $model->{$attr};
-        } else {
-            if (isset($this->deleteFileName)) {
-                $value = $this->deleteFileName;
-            } else {
-                $value = $model->oldAttributes[$attr];
-            }
-        }
-        $file = $base . $value;
-
-        if (is_file($file)) {
-            unlink($file);
-        }
-        if ($this->issetThumbnails($attr)) {
-            foreach ($this->attributes[$attr]['thumbnails'] as $name => $options) {
-                $this->ensureAttribute($name, $options);
-                $file = $base . $name . '_' . $value;
-                if (is_file($file)) {
-                    unlink($file);
-                }
-            }
-        }
-    }
-
-    /**
-     * @param string $attr name of attribute
-     * @return bool isset thumbnails or not
-     */
-    private function issetThumbnails($attr)
-    {
-        return isset($this->attributes[$attr]['thumbnails']) && is_array($this->attributes[$attr]['thumbnails']);
-    }
-
-    /**
-     * Check, isset attribute or not
-     * @param string $attribute name of attribute
-     * @throws InvalidParamException
-     */
-    private function checkAttrExists($attribute)
-    {
-        foreach ($this->attributes as $attr => $options) {
-            $this->ensureAttribute($attr, $options);
-            if ($attr == $attribute) {
-                return;
-            }
-        }
-        throw new InvalidParamException();
-    }
-
-    /**
-     * Получение имени файла. По умолчанию уникальный ID
-     * @param $file
-     * @return string
-     */
-    private function getFileName($file)
-    {
-        if (isset($this->fileName)){
-            return $this->fileName . '.' . $file->extension;
-        }
-        
-        return uniqid() . '.' . $file->extension;
-    }
-    
-    /**
      * Crop image
      * @param UploadedFile $file
      * @param array $coords
@@ -405,16 +350,6 @@ class Behavior extends \yii\base\Behavior
 
         return Image::crop($file->tempName, $coords['w'], $coords['h'], [$coords['x'], $coords['y']])
             ->resize(new Box($width, $height));
-    }
-
-    /**
-     * @param ActiveRecord $object
-     * @return string
-     */
-    private function getShortClassName($object)
-    {
-        $object = new \ReflectionClass($object);
-        return mb_strtolower($object->getShortName());
     }
 
     /**
@@ -449,5 +384,115 @@ class Behavior extends \yii\base\Behavior
         }
 
         return $image;
+    }
+
+    /**
+     * function for EVENT_BEFORE_DELETE
+     */
+    public function beforeDelete()
+    {
+        foreach ($this->attributes as $attr => $options) {
+            $this->ensureAttribute($attr, $options);
+            $this->deleteFiles($attr);
+        }
+    }
+
+    /**
+     * @param string $attr name of attribute
+     * @param bool|string $tmb false or name of thumbnail
+     * @param ActiveRecord $object that keep attrribute. Default $this->owner
+     * @return string url to image
+     */
+    public function getImageUrl($attr, $tmb = false, $object = null)
+    {
+        $this->checkAttrExists($attr);
+        $prefix = $this->getUrlPrefix($attr, $tmb, $object);
+        $object = isset($object) ? $object : $this->owner;
+        $image = $tmb ? $tmb . DIRECTORY_SEPARATOR . $object->{$attr} : $object->{$attr};
+        $file = $this->getSavePath($attr) . $image;
+        //Если файл не существует
+        if (!file_exists($file)) {
+            return null;
+        }
+
+        return $prefix . $image;
+    }
+
+    /**
+     * Check, isset attribute or not
+     * @param string $attribute name of attribute
+     * @throws InvalidParamException
+     */
+    private function checkAttrExists($attribute)
+    {
+        foreach ($this->attributes as $attr => $options) {
+            $this->ensureAttribute($attr, $options);
+            if ($attr == $attribute) {
+                return;
+            }
+        }
+        throw new InvalidParamException();
+    }
+
+    /**
+     * @param string $attr name of attribute
+     * @param bool|string $tmb name of thumbnail
+     * @param ActiveRecord $object for default prefix
+     * @return string url prefix
+     */
+    private function getUrlPrefix($attr, $tmb = false, $object = null)
+    {
+        if ($tmb !== false) {
+            if (isset($this->thumbUrl)) {
+                return '/' . trim($this->thumbUrl, '/') . '/';
+            }
+            if (isset($this->attributes[$attr]['thumbnails'][$tmb]['urlPrefix'])) {
+                return '/' . trim($this->attributes[$attr]['thumbnails'][$tmb]['urlPrefix'], '/') . '/';
+            }
+        }
+
+        if (isset($this->attributes[$attr]['urlPrefix'])) {
+            return '/' . trim($this->attributes[$attr]['urlPrefix'], '/') . '/';
+        }
+        if (isset($this->urlPrefix)) {
+            return '/' . trim($this->urlPrefix, '/') . '/';
+        }
+
+        $object = isset($object) ? $object : $this->owner;
+
+        return Yii::$app->request->baseUrl . '/images/' . $this->getShortClassName($object) . '/';
+    }
+
+    /**
+     * @return string Путь сохранения миниатюр
+     * @throws \yii\base\InvalidArgumentException
+     */
+    public function getThumbPath()
+    {
+        if (isset($this->thumbPath)) {
+            return rtrim(Yii::getAlias($this->thumbPath), '\/') . DIRECTORY_SEPARATOR;
+        }
+
+        return $this->savePath();
+    }
+
+    /**
+     * Создает папку
+     * @param $dir
+     * @throws \yii\base\Exception
+     */
+    private function createDirectory($dir): void
+    {
+        FileHelper::createDirectory($dir);
+    }
+
+    /**
+     * @param $file
+     */
+    private function removeFile($file): void
+    {
+        if (is_file($file)) {
+            unlink($file);
+        }
     }
 }
