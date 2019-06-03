@@ -78,6 +78,8 @@ class Behavior extends \yii\base\Behavior
      */
     public $urlPrefix;
 
+    public $deleteFileName;
+
     /**
      * @inheritdoc
      */
@@ -370,7 +372,11 @@ class Behavior extends \yii\base\Behavior
         if ($model->isNewRecord) {
             $value = $model->{$attr};
         } else {
-            $value = $model->oldAttributes[$attr];
+            if (isset($this->deleteFileName)) {
+                $value = $this->deleteFileName;
+            } else {
+                $value = $model->oldAttributes[$attr];
+            }
         }
         $file = $base . $value;
 
