@@ -25,6 +25,8 @@ use Yii;
  *              'class' => \maxdancepro\image\Behavior::className(),
  *              'savePathAlias' => '@web/images/',
  *              'urlPrefix' => '/images/',
+ *              'deleteFileName' => 'avatar.jpg',
+ *              'deleteFileName' => 'avatar.jpg',
  *              'crop' => true,
  *              'attributes' => [
  *                  'avatar' => [
@@ -77,7 +79,13 @@ class Behavior extends \yii\base\Behavior
      * @var string part of url for image without hostname. Default '/images/%className%/'
      */
     public $urlPrefix;
-
+    /**
+     * @var string, название файла. По умолчанию уникальный генератор числа @see https://www.php.net/manual/ru/function.uniqid.php
+     */
+    public $fileName;
+    /**
+     * @var string имя файла, который необходимо удалить перед загрузкой нового. Например "$model->fileName" //filename.jpg
+     */
     public $deleteFileName;
 
     /**
@@ -124,7 +132,7 @@ class Behavior extends \yii\base\Behavior
                 if (!$model->isNewRecord) {
                     $this->deleteFiles($attr);
                 }
-                $fileName = uniqid() . '.' . $file->extension;
+                $fileName = $this->getFileName($file);
                 if ($this->needCrop($attr)) {
                     $coords = $this->getCoords($attr);
                     if ($coords === false) {
@@ -156,77 +164,6 @@ class Behavior extends \yii\base\Behavior
                 $model->{$attr} = $model->oldAttributes[$attr];
             }
         }
-    }
-
-    /**
-     * Crop image
-     * @param UploadedFile $file
-     * @param array $coords
-     * @param array $options
-     * @return \Imagine\Image\ManipulatorInterface
-     */
-    private function crop($file, array $coords, array $options)
-    {
-        if (isset($options['width']) && !isset($options['height'])) {
-            $width = $options['width'];
-            $height = $options['width'] * $coords['h'] / $coords['w'];
-        } elseif (!isset($options['width']) && isset($options['height'])) {
-            $width = $options['height'] * $coords['w'] / $coords['h'];
-            $height = $options['height'];
-        } elseif (isset($options['width']) && isset($options['height'])) {
-            $width = $options['width'];
-            $height = $options['height'];
-        } else {
-            $width = $coords['w'];
-            $height = $coords['h'];
-        }
-
-        return Image::crop($file->tempName, $coords['w'], $coords['h'], [$coords['x'], $coords['y']])
-            ->resize(new Box($width, $height));
-    }
-
-    /**
-     * @param ActiveRecord $object
-     * @return string
-     */
-    private function getShortClassName($object)
-    {
-        $object = new \ReflectionClass($object);
-        return mb_strtolower($object->getShortName());
-    }
-
-    /**
-     * @param string $original path to original image
-     * @param array $options with width and height
-     * @return \Imagine\Image\ImageInterface
-     */
-    private function processImage($original, $options)
-    {
-        list($imageWidth, $imageHeight) = getimagesize($original);
-        $image = Image::getImagine()->open($original);
-        if (isset($options['width']) && !isset($options['height'])) {
-            $width = $options['width'];
-            $height = $options['width'] * $imageHeight / $imageWidth;
-            $image->resize(new Box($width, $height));
-        } elseif (!isset($options['width']) && isset($options['height'])) {
-            $width = $options['height'] * $imageWidth / $imageHeight;
-            $height = $options['height'];
-            $image->resize(new Box($width, $height));
-        } elseif (isset($options['width']) && isset($options['height'])) {
-            $width = $options['width'];
-            $height = $options['height'];
-            if ($width / $height > $imageWidth / $imageHeight) {
-                $resizeHeight = $width * $imageHeight / $imageWidth;
-                $image->resize(new Box($width, $resizeHeight))
-                    ->crop(new Point(0, ($resizeHeight - $height) / 2), new Box($width, $height));
-            } else {
-                $resizeWidth = $height * $imageWidth / $imageHeight;
-                $image->resize(new Box($resizeWidth, $height))
-                    ->crop(new Point(($resizeWidth - $width) / 2, 0), new Box($width, $height));
-            }
-        }
-
-        return $image;
     }
 
     /**
@@ -295,7 +232,17 @@ class Behavior extends \yii\base\Behavior
 
         return $prefix.$image;
     }
-
+    /**
+     * @param $attr
+     * @param $options
+     */
+    public static function ensureAttribute(&$attr, &$options)
+    {
+        if (!is_array($options)) {
+            $attr = $options;
+            $options = [];
+        }
+    }
 
     /**
      * @param string $attr name of attribute
@@ -420,14 +367,87 @@ class Behavior extends \yii\base\Behavior
     }
 
     /**
-     * @param $attr
-     * @param $options
+     * Получение имени файла. По умолчанию уникальный ID
+     * @param $file
+     * @return string
      */
-    public static function ensureAttribute(&$attr, &$options)
+    private function getFileName($file)
     {
-        if (!is_array($options)) {
-            $attr = $options;
-            $options = [];
+        if (isset($this->fileName)){
+            return $this->fileName . '.' . $file->extension;
         }
+        
+        return uniqid() . '.' . $file->extension;
+    }
+    
+    /**
+     * Crop image
+     * @param UploadedFile $file
+     * @param array $coords
+     * @param array $options
+     * @return \Imagine\Image\ManipulatorInterface
+     */
+    private function crop($file, array $coords, array $options)
+    {
+        if (isset($options['width']) && !isset($options['height'])) {
+            $width = $options['width'];
+            $height = $options['width'] * $coords['h'] / $coords['w'];
+        } elseif (!isset($options['width']) && isset($options['height'])) {
+            $width = $options['height'] * $coords['w'] / $coords['h'];
+            $height = $options['height'];
+        } elseif (isset($options['width']) && isset($options['height'])) {
+            $width = $options['width'];
+            $height = $options['height'];
+        } else {
+            $width = $coords['w'];
+            $height = $coords['h'];
+        }
+
+        return Image::crop($file->tempName, $coords['w'], $coords['h'], [$coords['x'], $coords['y']])
+            ->resize(new Box($width, $height));
+    }
+
+    /**
+     * @param ActiveRecord $object
+     * @return string
+     */
+    private function getShortClassName($object)
+    {
+        $object = new \ReflectionClass($object);
+        return mb_strtolower($object->getShortName());
+    }
+
+    /**
+     * @param string $original path to original image
+     * @param array $options with width and height
+     * @return \Imagine\Image\ImageInterface
+     */
+    private function processImage($original, $options)
+    {
+        list($imageWidth, $imageHeight) = getimagesize($original);
+        $image = Image::getImagine()->open($original);
+        if (isset($options['width']) && !isset($options['height'])) {
+            $width = $options['width'];
+            $height = $options['width'] * $imageHeight / $imageWidth;
+            $image->resize(new Box($width, $height));
+        } elseif (!isset($options['width']) && isset($options['height'])) {
+            $width = $options['height'] * $imageWidth / $imageHeight;
+            $height = $options['height'];
+            $image->resize(new Box($width, $height));
+        } elseif (isset($options['width']) && isset($options['height'])) {
+            $width = $options['width'];
+            $height = $options['height'];
+            if ($width / $height > $imageWidth / $imageHeight) {
+                $resizeHeight = $width * $imageHeight / $imageWidth;
+                $image->resize(new Box($width, $resizeHeight))
+                    ->crop(new Point(0, ($resizeHeight - $height) / 2), new Box($width, $height));
+            } else {
+                $resizeWidth = $height * $imageWidth / $imageHeight;
+                $image->resize(new Box($resizeWidth, $height))
+                    ->crop(new Point(($resizeWidth - $width) / 2, 0), new Box($width, $height));
+            }
+        }
+
+        return $image;
     }
 }
