@@ -156,10 +156,7 @@ class Behavior extends \yii\base\Behavior
             if ($file = UploadedFile::getInstance($model, $attr)) {
 
                 $this->createDirByAttr($attr);
-
-                if (!$model->isNewRecord) {
-                    $this->deleteFiles($attr);
-                }
+                $this->deleteFiles($attr);
 
                 $fileName = $this->getFileName($file);
 
@@ -243,25 +240,21 @@ class Behavior extends \yii\base\Behavior
      */
     private function deleteFiles($attr)
     {
-        $base = $this->getSavePath($attr);
-        /* @var $model ActiveRecord */
-        $model = $this->owner;
-        if ($model->isNewRecord) {
-            $value = $model->{$attr};
+        $path = $this->getSavePath($attr);
+
+        if (isset($this->deleteFileName)) {
+            $fileName = $this->deleteFileName;
         } else {
-            if (isset($this->deleteFileName)) {
-                $value = $this->deleteFileName;
-            } else {
-                $value = $model->oldAttributes[$attr];
-            }
+            $fileName = $this->owner->model->{$attr};
         }
-        $file = $base . $value;
+
+        $file = $path . $fileName;
         $this->removeFile($file);
 
         if ($this->issetThumbnails($attr)) {
-            foreach ($this->attributes[$attr]['thumbnails'] as $name => $options) {
-                $this->ensureAttribute($name, $options);
-                $file = $base . $name . '_' . $value;
+            foreach ($this->attributes[$attr]['thumbnails'] as $tmb => $options) {
+                $this->ensureAttribute($tmb, $options);
+                $file = $path . $tmb . '_' . $fileName;
                 $this->removeFile($file);
             }
         }
@@ -491,7 +484,7 @@ class Behavior extends \yii\base\Behavior
      */
     private function removeFile($file): void
     {
-        if (is_file($file)) {
+        if (file_exists($file)) {
             unlink($file);
         }
     }
