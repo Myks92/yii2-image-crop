@@ -245,7 +245,7 @@ class Behavior extends \yii\base\Behavior
         if (isset($this->deleteFileName)) {
             $fileName = $this->deleteFileName;
         } else {
-            $fileName = $this->owner->model->{$attr};
+            $fileName = $this->owner->{$attr};
         }
 
         $file = $path . $fileName;
