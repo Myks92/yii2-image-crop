@@ -311,10 +311,10 @@ class Behavior extends \yii\base\Behavior
         }
 
         return [
-            'x' => $x,
-            'y' => $y,
-            'w' => $w,
-            'h' => $h
+            'x' => $x > 0 ? $x : 0,
+            'y' => $y > 0 ? $y : 0,
+            'w' => $w > 0 ? $w : 0,
+            'h' => $h > 0 ? $h : 0
         ];
     }
 
