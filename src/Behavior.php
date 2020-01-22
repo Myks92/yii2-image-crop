@@ -466,7 +466,7 @@ class Behavior extends \yii\base\Behavior
             return rtrim(Yii::getAlias($this->thumbPath), '\/') . DIRECTORY_SEPARATOR;
         }
 
-        return $this->savePath();
+        return $this->getSavePath();
     }
 
     /**
