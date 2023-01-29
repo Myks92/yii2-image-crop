@@ -26,7 +26,7 @@
         "yiisoft/yii2": "2.0.*",
         "yiisoft/yii2-imagine": "2.*",
         "yiisoft/yii2-bootstrap4": "^2.0",
-        "bower-asset/Jcrop": "0.9.*"
+        "bower-asset/Jcrop": "0.2.*"
     },
     "autoload": {
         "psr-4": {
